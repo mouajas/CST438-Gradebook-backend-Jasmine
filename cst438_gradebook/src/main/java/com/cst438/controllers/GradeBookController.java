@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.cst438.domain.Assignment;
 import com.cst438.domain.AssignmentListDTO;
+import com.cst438.domain.AssignmentListDTO.AssignmentDTO;
 import com.cst438.domain.AssignmentGrade;
 import com.cst438.domain.AssignmentGradeRepository;
 import com.cst438.domain.AssignmentRepository;
@@ -168,6 +170,95 @@ public class GradeBookController {
 		}
 		
 		return assignment;
+	}
+	
+	// As an instructor for a course , I can add a new assignment for my course.  The assignment has a name and a due date.
+	@PostMapping("/course/{course_id}/newassignment")
+	@Transactional 
+	public AssignmentListDTO.AssignmentDTO newAssignment(@RequestBody AssignmentListDTO.AssignmentDTO assignmentDTO, @PathVariable("course_id") Integer courseID ) {
+		// create the new assignment
+		Assignment assignment = new Assignment();
+		
+		// check if this is a valid course
+		Course course = courseRepository.findById(courseID).orElse(null);
+		if (course != null) { // course exists 
+			assignment.setCourse(course);
+		} else { // course does not exist
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Course does not exist."+ courseID );
+		}
+		
+		// check that user is the course instructor
+		if (!course.getInstructor().equals("dwisneski@csumb.edu")) {
+			throw new ResponseStatusException( HttpStatus.UNAUTHORIZED, "Not Authorized. " );
+		}
+		
+		// continue to make a new assignment
+		assignment.setDueDate(java.sql.Date.valueOf(assignmentDTO.dueDate));
+		assignment.setName(assignmentDTO.assignmentName);
+		assignment.setNeedsGrading(1);
+		
+		return newAssignmentDTO(assignmentRepository.save(assignment));
+	}
+	
+	// As an instructor, I can change the name of the assignment for my course.
+	@PutMapping("/course/{course_id}/changeassignmentname")
+	@Transactional
+	public void changeAssignmentName (@RequestBody AssignmentListDTO.AssignmentDTO assignmentDTO, @PathVariable("course_id") Integer courseID) {
+		// check if this is a valid course
+		Course course = courseRepository.findById(courseID).orElse(null);
+		if (course == null) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Course does not exist."+ courseID );
+		}	
+				
+		// does this assignment exist
+		Assignment assignmentexists = assignmentRepository.findById(assignmentDTO.assignmentId).orElse(null);		
+		if (assignmentexists != null){ // exists
+			if (assignmentexists.getCourse().getCourse_id() == courseID) {
+				// change assignment name
+				assignmentexists.setName(assignmentDTO.assignmentName);
+				// save updated assignment name
+				assignmentRepository.save(assignmentexists);
+			}
+		} else { // does not exist
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Assignment does not exist."+assignmentDTO.assignmentId );
+		}
+	}
+	
+	// As an instructor, I can delete an assignment  for my course (only if there are no grades for the assignment).
+	@DeleteMapping("/course/{course_id}/deleteassignment/{assignment_id}")
+	@Transactional
+	public void deleteAssignment(@RequestBody AssignmentListDTO.AssignmentDTO assignmentDTO, @PathVariable("course_id") Integer courseID) {
+		// is this a valid course
+		Course course = courseRepository.findById(courseID).orElse(null);
+		if (course == null) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Course does not exist."+ courseID );
+		}
+		
+		// has the assignment been graded
+		Assignment a = assignmentRepository.findById(assignmentDTO.assignmentId).orElse(null);
+		if (a != null){ // exists
+			if (a.getCourse().getCourse_id() == courseID) {
+				// if there are no grades for the assignment
+				if (a.getNeedsGrading() == 1 /**true**/) {
+					// delete existing assignment
+					assignmentRepository.delete(a);
+				}
+			}
+		} else { // does not exist
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Assignment does not exist."+assignmentDTO.assignmentId );
+		}
+	}
+	
+	private AssignmentListDTO.AssignmentDTO newAssignmentDTO(Assignment assignment) {
+		AssignmentListDTO.AssignmentDTO assignmentDTO = 
+				new AssignmentDTO(
+					assignment.getId(), 
+					assignment.getCourse().getCourse_id(), 
+					assignment.getName(),
+					assignment.getDueDate().toString(), 
+					assignment.getCourse().getTitle()
+	    		);
+		return assignmentDTO;
 	}
 
 }

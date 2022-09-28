@@ -13,6 +13,16 @@ public class AssignmentListDTO {
 		public String dueDate;
 		public String courseTitle;
 		public int courseId;
+		
+		// default constructor
+		public AssignmentDTO() {
+			this.assignmentId = 0;
+			this.courseId = 0;
+			this.assignmentName = "";
+			this.dueDate = "";
+			this.courseTitle = "";
+		}
+
 
 		public AssignmentDTO(int assignmentId, int courseId, String assignmentName, String dueDate,
 				String courseTitle) {
