@@ -173,18 +173,23 @@ public class GradeBookController {
 	}
 	
 	// As an instructor for a course , I can add a new assignment for my course.  The assignment has a name and a due date.
-	@PostMapping("/course/{course_id}/newassignment")
+	@PostMapping("/assignment")
 	@Transactional 
-	public AssignmentListDTO.AssignmentDTO newAssignment(@RequestBody AssignmentListDTO.AssignmentDTO assignmentDTO, @PathVariable("course_id") Integer courseID ) {
+	public AssignmentListDTO.AssignmentDTO newAssignment(@RequestBody AssignmentListDTO.AssignmentDTO assignmentDTO ) {
 		// create the new assignment
 		Assignment assignment = new Assignment();
 		
+		int id = assignmentDTO.courseId; // get course id from assignmentDTO
+		
+		System.out.print("HELLLLOO HERE ********");
+		System.out.print(assignmentDTO.courseId);
+		
 		// check if this is a valid course
-		Course course = courseRepository.findById(courseID).orElse(null);
+		Course course = courseRepository.findById(id).orElse(null);
 		if (course != null) { // course exists 
 			assignment.setCourse(course);
 		} else { // course does not exist
-			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Course does not exist."+ courseID );
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Course does not exist."+ id );
 		}
 		
 		// check that user is the course instructor
